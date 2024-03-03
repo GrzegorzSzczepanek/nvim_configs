@@ -1,41 +1,40 @@
 --[[
 
 TODOs:
-- mini terminal
 - mini deps
-- mini git
 - mini completion + mini snippets + mini pairs
-
 - when new nvim version drops (fork, change name, remove unused things (lsp name), change modes to long names)
-- { "nvimdev/whiskyline.nvim", event = "BufEnter", config = true },
+  { "nvimdev/whiskyline.nvim", event = "BufEnter", config = true },
+- ? mini terminal
+- ? mini git
 
 ]]
 --
 
 return {
     -- My plugins
-    -- { "Ernest1338/egruvbox",           priority = 1000 },
-    { "Ernest1338/egcolors.vim",       priority = 1000 },
-    "Ernest1338/mini.pickaproject",
+    { "Ernest1338/egcolors.vim",      priority = 1000 },
+    { "Ernest1338/mini.pickaproject", cmd = "PickAProject", config = true },
     "Ernest1338/termplug.nvim",
     { "Ernest1338/eg-statusline.nvim", event = "BufEnter", config = true },
 
-    -- { "ellisonleao/gruvbox.nvim",    priority = 1000 },
-    -- { "tanvirtin/monokai.nvim",      priority = 1000 },
+    { "shortcuts/no-neck-pain.nvim",   cmd = "NoNeckPain", opts = { width = 120 } },
+    "nvim-tree/nvim-web-devicons",
+    { "echasnovski/mini.extra", event = "VeryLazy", config = true },
 
     -- AI
-    -- {
-    --     "Exafunction/codeium.vim",
-    --     event = "VeryLazy",
-    --     config = function()
-    --         local map = vim.keymap.set
-    --         map('i', '<M-Bslash>', function() return vim.fn['codeium#Complete']() end, { expr = true, silent = true })
-    --         map('i', '<M-]>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true, silent = true })
-    --         map('i', '<M-[>', function() return vim.fn['codeium#CycleCompletions'](-1) end,
-    --             { expr = true, silent = true })
-    --         map('i', '<M-Enter>', function() return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
-    --     end
-    -- },
+    {
+        "Exafunction/codeium.vim",
+        event = "VeryLazy",
+        config = function()
+            local map = vim.keymap.set
+            map('i', '<M-Bslash>', function() return vim.fn['codeium#Complete']() end, { expr = true, silent = true })
+            map('i', '<M-]>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true, silent = true })
+            map('i', '<M-[>', function() return vim.fn['codeium#CycleCompletions'](-1) end,
+                { expr = true, silent = true })
+            map('i', '<M-Enter>', function() return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
+        end
+    },
 
     {
         "nvim-treesitter/nvim-treesitter",
@@ -50,71 +49,81 @@ return {
         end
     },
     {
-    "williamboman/mason.nvim",
-    lazy = false,
-    config = true
-    },
-    {
         "neovim/nvim-lspconfig",
         event = "VeryLazy",
         config = function()
             local nvim_lsp = require("lspconfig")
+
             local on_attach = function(client, _) -- _ = bufnr
                 -- disabled, because it breaks highlighting and makes it slugish
                 client.server_capabilities.semanticTokensProvider = nil
+
+                -- LSP mappings
+                local map = vim.keymap.set
+
+                map("n", "K", function()
+                    local line_diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+                    if vim.tbl_isempty(line_diagnostics) then
+                        vim.lsp.buf.hover()
+                    else
+                        vim.diagnostic.open_float()
+                    end
+                end)                                                                                          -- LSP button
+                map("n", "<leader>lf", "<cmd> lua vim.lsp.buf.format({ async = true, timeout = 2000 }) <CR>") -- Format file
+                map("n", "<leader>la", "<cmd> lua vim.lsp.buf.code_action() <CR>")                            -- LSP Code actions
+                map("n", "<leader>ld", "<cmd> Pick diagnostic <CR>")                                          -- LSP Diagnostics
+                map("n", "<leader>ls", "<cmd> Pick lsp scope='document_symbol' <CR>")                         -- LSP Symbols
+                map("n", "<leader>lr", "<cmd> lua vim.lsp.buf.rename() <CR>")                                 -- Rename
+                map("n", "<C-k>", "<cmd> lua vim.lsp.buf.hover() <CR>")                                       -- LSP show hover information
+                map("n", "gd", "<cmd> Pick lsp scope='definition' <CR>")                                      -- Go to defifinition
+                map("n", "gD", "<cmd> Pick lsp scope='references' <CR>")                                      -- Go to references
             end
-            nvim_lsp["rust_analyzer"].setup {
-                on_attach = on_attach,
-                settings = {
-                    ["rust-analyzer"] = {
+
+            local servers = {
+                rust_analyzer = {
+                    ["rust_analyzer"] = {
                         diagnostics = {
                             enable = true,
                             disabled = { "unresolved-proc-macro" },
                             --enableExperimental = true,
-                        },
-                    },
+                        }
+                    }
                 },
-            }
-            nvim_lsp["svelte"].setup {
+                svelte = {
 
-            }
-            nvim_lsp["elixirls"].setup {
-            }
-            nvim_lsp["pylsp"].setup {
-                on_attach = on_attach,
-                settings = {
-                    pylsp = {
+                },
+                tsserver = {
+
+                },
+                pylsp = {
+                    ["pylsp"] = {
                         plugins = {
                             pycodestyle = {
                                 maxLineLength = 120,
                                 ignore = { "E265", "E722" }
                             },
-                            mccabe = {
-                                enabled = false
-                            }
+                            mccabe = { enabled = false }
                         }
                     }
-                }
-            }
-            nvim_lsp["lua_ls"].setup {
-                on_attach = on_attach,
-                settings = {
+                },
+                lua_ls = {
                     Lua = {
                         diagnostics = {
                             globals = { "vim", "jit", "MiniPick" },
                         },
                     },
                 },
+                zls = {},
+                gopls = {},
+                clangd = {}
             }
-            nvim_lsp["zls"].setup {
-                on_attach = on_attach,
-            }
-            nvim_lsp["gopls"].setup {
-                on_attach = on_attach,
-            }
-            nvim_lsp["clangd"].setup {
-                on_attach = on_attach,
-            }
+
+            for server, settings in pairs(servers) do
+                nvim_lsp[server].setup {
+                    on_attach = on_attach,
+                    settings = settings
+                }
+            end
         end
     },
     {
@@ -253,6 +262,11 @@ return {
         end
     },
     {
+        "windwp/nvim-autopairs",
+        event = "VeryLazy",
+        config = true
+    },
+    {
         "echasnovski/mini.comment",
         event = "VeryLazy",
         opts = {
@@ -292,7 +306,8 @@ return {
     },
     {
         "echasnovski/mini.pick",
-        event = "VeryLazy",
+        -- event = "VeryLazy",
+        cmd = "Pick",
         config = function()
             require("mini.pick").setup {
                 mappings = {
@@ -330,12 +345,47 @@ return {
             end
         end
     },
+    {
+        "lewis6991/gitsigns.nvim",
+        event = "VeryLazy",
+        config = function()
+            require('gitsigns').setup {
+                on_attach = function(bufnr)
+                    local gs = package.loaded.gitsigns
+
+                    local function map(mode, l, r, opts)
+                        opts = opts or {}
+                        opts.buffer = bufnr
+                        vim.keymap.set(mode, l, r, opts)
+                    end
+
+                    -- Navigation
+                    map('n', 'g]', function()
+                        if vim.wo.diff then return ']c' end
+                        vim.schedule(function() gs.next_hunk() end)
+                        return '<Ignore>'
+                    end, { expr = true })
+
+                    map('n', 'g[', function()
+                        if vim.wo.diff then return '[c' end
+                        vim.schedule(function() gs.prev_hunk() end)
+                        return '<Ignore>'
+                    end, { expr = true })
+
+                    map('n', '<leader>gp', gs.preview_hunk)
+                    map('n', '<leader>gt', gs.toggle_current_line_blame)
+                    -- NOTE: maybe more mappings?
+                end
+            }
+        end
+    },
+
     -- {
     --     'nvimdev/indentmini.nvim',
     --     event = 'BufEnter',
     --     config = function()
     --         require('indentmini').setup()
-    --         vim.cmd.highlight("IndentLine guifg=#323232")
+    --         vim.cmd.highlight("IndentLine guifg=#222738")
     --     end,
     -- },
     -- {
@@ -349,7 +399,7 @@ return {
     --             config = {
     --                 border = 'none',
     --             },
-    --             winblend = 50,
+    --             winblend = 100,
     --         }
     --     }
     -- },
@@ -365,41 +415,68 @@ return {
     --     config = { delay = 1000 }
     -- },
     -- {
-    --     "echasnovski/mini.nvim",
-    --     lazy = false,
-    --     -- event = "VeryLazy",
+    --     "echasnovski/mini.hipatterns",
+    --     event = "VeryLazy",
     --     config = function()
-    --         -- local hipatterns = require("mini.hipatterns")
-    --         -- hipatterns.setup {
-    --         --     highlighters = {
-    --         --         -- Highlight hex color strings (`#rrggbb`) using that color
-    --         --         hex_color = hipatterns.gen_highlighter.hex_color(),
-    --         --     },
-    --         --     delay = {
-    --         --         text_change = 500,
-    --         --         scroll = 500,
-    --         --     }
-    --         -- }
+    --         local hipatterns = require("mini.hipatterns")
+    --         hipatterns.setup {
+    --             highlighters = {
+    --                 -- Highlight hex color strings (`#rrggbb`) using that color
+    --                 hex_color = hipatterns.gen_highlighter.hex_color(),
+    --             },
+    --             delay = {
+    --                 text_change = 500,
+    --                 scroll = 500,
+    --             }
+    --         }
     --     end
     -- },
-    {
-        "lewis6991/gitsigns.nvim",
-        event = "VeryLazy",
-        config = true
-    },
-    { "shortcuts/no-neck-pain.nvim", cmd = "NoNeckPain", opts = { width = 120 } },
-    {
-        "windwp/nvim-autopairs",
-        event = "VeryLazy",
-        config = true
-    },
-    "nvim-tree/nvim-web-devicons",
-    { "echasnovski/mini.extra",      event = "VeryLazy", config = true },
+    -- { "echasnovski/mini.starter",    event = "VimEnter", config = true },
+    -- {
+    --     "nvimdev/dashboard-nvim",
+    --     event = "VimEnter",
+    --     config = {
+    --         theme = "hyper",
+    --         config = {
+    --             -- header = {
+    --             --     " ███▄    █ ▓█████  ▒█████   ██▒   █▓ ██▓ ███▄ ▄███▓",
+    --             --     " ██ ▀█   █ ▓█   ▀ ▒██▒  ██▒▓██░   █▒▓██▒▓██▒▀█▀ ██▒",
+    --             --     "▓██  ▀█ ██▒▒███   ▒██░  ██▒ ▓██  █▒░▒██▒▓██    ▓██░",
+    --             --     "▓██▒  ▐▌██▒▒▓█  ▄ ▒██   ██░  ▒██ █░░░██░▒██    ▒██ ",
+    --             --     "▒██░   ▓██░░▒████▒░ ████▓▒░   ▒▀█░  ░██░▒██▒   ░██▒",
+    --             --     "░ ▒░   ▒ ▒ ░░ ▒░ ░░ ▒░▒░▒░    ░ ▐░  ░▓  ░ ▒░   ░  ░",
+    --             --     "░ ░░   ░ ▒░ ░ ░  ░  ░ ▒ ▒░    ░ ░░   ▒ ░░  ░      ░",
+    --             --     "   ░   ░ ░    ░   ░ ░ ░ ▒       ░░   ▒ ░░      ░   ",
+    --             --     "         ░    ░  ░    ░ ░        ░   ░         ░   ",
+    --             --     "                                ░                  ",
+    --             --     ""
+    --             -- },
+    --             header = {
+    --                 "███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗     ██████╗ ██╗  ██╗ ██████╗ ███████╗ ██████╗███████╗",
+    --                 "████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║    ██╔═████╗╚██╗██╔╝██╔════╝ ██╔════╝██╔════╝╚════██║",
+    --                 "██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║    ██║██╔██║ ╚███╔╝ ███████╗ ███████╗███████╗    ██╔╝",
+    --                 "██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║    ████╔╝██║ ██╔██╗ ██╔═══██╗╚════██║██╔═══██╗  ██╔╝ ",
+    --                 "██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║    ╚██████╔╝██╔╝ ██╗╚██████╔╝███████║╚██████╔╝  ██║  ",
+    --                 "╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝ ╚═════╝   ╚═╝  ",
+    --                 ""
+    --             },
+    --             shortcut = {
+    --                 { desc = '[  Github]', group = 'DashboardShortCut' },
+    --                 { desc = '[  Ernest1338]', group = 'DashboardShortCut' },
+    --                 { desc = '[  v69.420]', group = 'DashboardShortCut' },
+    --             },
+    --             project = {
+    --                 action = function(path) vim.cmd("Pick files cwd='" .. path .. "'") end
+    --             },
+    --         }
+    --     }
+    -- },
 
     -- LOCAL PLUGIN DEVELOPMENT
-    { "local/doctor",                dev = true },
-    { "local/wordcount",             dev = true },
-    { "local/training",              dev = true },
+    { "local/doctor",           dev = true },
+    { "local/wordcount",        dev = true },
+    { "local/training",         dev = true },
+    { "local/cube-timer",       dev = true,         cmd = "CubeTimer", config = true },
     -- { "local/statusline",       dev = true,         event = "BufEnter", config = true },
     -- { "local/termplug.nvim",              dev = true },
     -- { "local/mini.pickaproject",    dev = true },
